@@ -1,0 +1,1 @@
+Tournament of Champions VII Bracket 2026
