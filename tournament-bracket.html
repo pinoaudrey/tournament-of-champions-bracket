@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Tournament of Champions VII</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #f4f4f0;
+    color: #1a1a2e;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 20px 28px 48px;
+    overflow-x: auto;
+  }
+
+  header {
+    text-align: center;
+    padding-bottom: 22px;
+  }
+
+  header h1 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.6rem;
+    color: #b8860b;
+    letter-spacing: 0.14em;
+    text-shadow: 0 1px 6px rgba(184,134,11,0.15);
+  }
+
+
+  /* ── BRACKET WRAPPER ── */
+  #bracket {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    gap: 28px;
+    min-height: 660px;
+  }
+
+  /* ── SIDES ── */
+  /* Each side = 4 cols × 130px + 3 gaps × 28px = 604px — identical so center is true middle */
+  .side {
+    width: 604px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: stretch;
+    gap: 28px;
+  }
+
+  /* Right side: DOM order is already [final → sf → qf → r1], no reversal needed */
+
+  /* ── ROUND COLUMNS ── */
+  .r1-col, .qf-col, .sf-col, .final-col {
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+  }
+
+  /* QF/SF/Final columns need an explicit width so they don't collapse
+     when their slot children are absolutely positioned */
+  .qf-col, .sf-col, .final-col { width: 130px; }
+
+  /* ── DIVISION SECTION (within r1-col) ── */
+  .div-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .col-label {
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #b8860b;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  .matches {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+  }
+
+  /* ── MATCH BOX ── */
+  .match {
+    width: 130px;
+    border: 1px solid #d0d0cc;
+    border-radius: 4px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    flex-shrink: 0;
+    transition: border-color 0.15s;
+  }
+
+  .match:hover { border-color: #999; }
+
+  .team {
+    display: flex;
+    align-items: center;
+    height: 23px;
+    padding: 0 7px;
+    gap: 5px;
+    font-size: 0.62rem;
+    color: #666;
+  }
+
+  .team:first-child { border-bottom: 1px solid #eee; }
+
+  .seed {
+    font-size: 0.53rem;
+    color: #bbb;
+    font-weight: 700;
+    min-width: 9px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ── SLOT GROUPS (for qf, sf, final columns) ── */
+  .slots-group {
+    flex: 1;
+    position: relative; /* anchor for absolutely-positioned slots */
+  }
+
+  /* ── SLOT ── */
+  .slot {
+    position: absolute;
+    left: 0;
+    width: 130px;
+    height: 46px;
+    border: 1px dashed #ccc;
+    border-radius: 4px;
+    background: #f8f8f5;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .slot-row {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 7px;
+    font-size: 0.54rem;
+    color: #ccc;
+  }
+  .slot-row:first-child { border-bottom: 1px solid #e8e8e2; }
+
+  .slot-row.has-name   { color: #666; }
+  .slot-row.pickable   { color: #555; cursor: pointer; }
+  .slot-row.pickable:hover { background: #fffbe6; color: #333; }
+  .slot-row.winner {
+    background: #f0f8ec;
+    color: #3a6e20;
+    font-weight: 700;
+  }
+  .slot-row.loser  { color: #bbb; cursor: pointer; }
+  .slot-row.loser:hover  { background: #fefbe8; color: #666; }
+
+  .slot.ready { border: 1.5px solid #d4a017; background: #fffdf8; }
+  .slot.done  { border: 1px solid #b0cfa8; }
+
+  /* ── GRAND FINAL CENTER ── */
+  #final-center {
+    width: 130px;
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  #final-content {
+    position: absolute;
+    left: 0;
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .trophy { font-size: 2rem; line-height: 1; }
+
+  .final-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 0.7rem;
+    color: #0bb831;
+    letter-spacing: 0.18em;
+  }
+
+  .champ-box {
+    margin-top: 10px;
+  }
+
+  .champ-label {
+    margin-top: 7px;
+    font-size: 0.52rem;
+    font-style: italic;
+    color: #0bb831;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    opacity: 0.75;
+  }
+
+  .champ-label.crowned {
+    opacity: 1;
+    color: #0bb831;
+    font-weight: 600;
+  }
+
+  .champ-name {
+    margin-top: 4px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.35rem;
+    color: #0bb831;
+    letter-spacing: 0.1em;
+    text-align: center;
+    line-height: 1.1;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    min-height: 1.5rem;
+  }
+
+  .champ-name.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .champ-box {
+    width: 100%;
+    height: 46px;
+    border: 2px dashed #0bb831;
+    border-radius: 4px;
+    background: #fffdf0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .champ-box .slot-row.winner {
+    background: #fffbe6;
+    color: #0bb831;
+    font-weight: 700;
+  }
+  .champ-box.done { border: 2px solid #0bb831; }
+
+  /* ── SVG CONNECTOR OVERLAY ── */
+  #lines {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    overflow: visible;
+  }
+
+  /* ── INTERACTIVE MATCH TEAMS ── */
+  .team.selectable { cursor: pointer; }
+  .team.selectable:hover { background: #f5f2e8; }
+  .team.winner-pick { background: #fffbe6; font-weight: 700; color: #111; }
+  .team.loser-pick  { opacity: 0.32; }
+
+  /* ── PRINT BAR ── */
+  #print-bar {
+    text-align: right;
+    padding-bottom: 14px;
+  }
+  #print-btn {
+    background: #b8860b;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 18px;
+    font-size: 0.72rem;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+  }
+  #print-btn:hover { filter: brightness(1.12); }
+
+  /* ── PRINT STYLES ── */
+  @page {
+    size: 11in 8.5in;
+    margin: 0;
+  }
+  @media print {
+    #print-bar { display: none !important; }
+    body {
+      background: white !important;
+      padding: 0.35in !important;
+      min-height: unset !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Tournament of Champions VII</h1>
+</header>
+
+<div id="print-bar">
+  <button id="print-btn">&#128438;&nbsp; Print / Save as PDF</button>
+</div>
+
+<div id="bracket">
+  <svg id="lines"></svg>
+
+  <!-- ════════════ LEFT SIDE ════════════ -->
+  <div class="side left">
+
+    <!-- R1 -->
+    <div class="r1-col">
+      <div class="col-label">Round 1</div>
+      <div class="div-section">
+        <div class="matches">
+          <div class="match" id="m-a1">
+            <div class="team hi"><span class="seed">1</span>Ming Tsai</div>
+            <div class="team"><span class="seed">8</span>Aarti Sequeira</div>
+          </div>
+          <div class="match" id="m-a2">
+            <div class="team"><span class="seed">4</span>Jonathon Sawyer</div>
+            <div class="team"><span class="seed">5</span>Karen Akunowicz</div>
+          </div>
+          <div class="match" id="m-a3">
+            <div class="team"><span class="seed">3</span>Tobias Dorzon</div>
+            <div class="team"><span class="seed">6</span>Claudette Zepeda</div>
+          </div>
+          <div class="match" id="m-a4">
+            <div class="team hi"><span class="seed">2</span>Jet Tila</div>
+            <div class="team"><span class="seed">7</span>Ashleigh Shanti</div>
+          </div>
+        </div>
+      </div>
+      <div class="div-section">
+        <div class="matches">
+          <div class="match" id="m-b1">
+            <div class="team hi"><span class="seed">1</span>Lorena Garcia</div>
+            <div class="team"><span class="seed">8</span>Katsuji Tanabe</div>
+          </div>
+          <div class="match" id="m-b2">
+            <div class="team"><span class="seed">4</span>Nini Nguyen</div>
+            <div class="team"><span class="seed">5</span>Joe Sasto</div>
+          </div>
+          <div class="match" id="m-b3">
+            <div class="team"><span class="seed">3</span>Kevin Lee</div>
+            <div class="team"><span class="seed">6</span>Adam Greenberg</div>
+          </div>
+          <div class="match" id="m-b4">
+            <div class="team hi"><span class="seed">2</span>Britt Rescigno</div>
+            <div class="team"><span class="seed">7</span>Giuseppe Tentori</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QF -->
+    <div class="qf-col">
+      <div class="col-label">Quarter Finals</div>
+      <div class="slots-group">
+        <div class="slot" id="qf-a1"></div>
+        <div class="slot" id="qf-a2"></div>
+      </div>
+      <div class="slots-group">
+        <div class="slot" id="qf-b1"></div>
+        <div class="slot" id="qf-b2"></div>
+      </div>
+    </div>
+
+    <!-- SF -->
+    <div class="sf-col">
+      <div class="col-label">Semi Finals</div>
+      <div class="slots-group">
+        <div class="slot" id="sf-a"></div>
+        <div class="slot" id="sf-b"></div>
+      </div>
+    </div>
+
+    <!-- Left Final -->
+    <div class="final-col">
+      <div class="col-label">Finals</div>
+      <div class="slots-group">
+        <div class="slot" id="lf"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════════════ GRAND FINAL ════════════ -->
+  <div id="final-center">
+    <div id="final-content">
+      <div class="trophy">🏆</div>
+      <div class="final-label">Championship</div>
+      <div class="champ-box" id="champ-box"></div>
+      <div class="champ-label" id="champ-label">Your Champion</div>
+      <div class="champ-name" id="champ-name"></div>
+    </div>
+  </div>
+
+  <!-- ════════════ RIGHT SIDE ════════════ -->
+  <div class="side right">
+
+    <!-- Right Final (innermost in DOM, leftmost visually due to row-reverse) -->
+    <div class="final-col">
+      <div class="col-label">Finals</div>
+      <div class="slots-group">
+        <div class="slot" id="rf"></div>
+      </div>
+    </div>
+
+    <!-- SF -->
+    <div class="sf-col">
+      <div class="col-label">Semi Finals</div>
+      <div class="slots-group">
+        <div class="slot" id="sf-c"></div>
+        <div class="slot" id="sf-d"></div>
+      </div>
+    </div>
+
+    <!-- QF -->
+    <div class="qf-col">
+      <div class="col-label">Quarter Finals</div>
+      <div class="slots-group">
+        <div class="slot" id="qf-c1"></div>
+        <div class="slot" id="qf-c2"></div>
+      </div>
+      <div class="slots-group">
+        <div class="slot" id="qf-d1"></div>
+        <div class="slot" id="qf-d2"></div>
+      </div>
+    </div>
+
+    <!-- R1 (outermost in DOM, rightmost visually) -->
+    <div class="r1-col">
+      <div class="col-label">Round 1</div>
+      <div class="div-section">
+        <div class="matches">
+          <div class="match" id="m-c1">
+            <div class="team hi"><span class="seed">1</span>Jonathan Waxman</div>
+            <div class="team"><span class="seed">8</span>Viet Pham</div>
+          </div>
+          <div class="match" id="m-c2">
+            <div class="team"><span class="seed">4</span>Dale Talde</div>
+            <div class="team"><span class="seed">5</span>Shirley Chung</div>
+          </div>
+          <div class="match" id="m-c3">
+            <div class="team"><span class="seed">3</span>Bryan Voltaggio</div>
+            <div class="team"><span class="seed">6</span>Carlos Anthony</div>
+          </div>
+          <div class="match" id="m-c4">
+            <div class="team hi"><span class="seed">2</span>Sara Bradley</div>
+            <div class="team"><span class="seed">7</span>Dan Jacobs</div>
+          </div>
+        </div>
+      </div>
+      <div class="div-section">
+        <div class="matches">
+          <div class="match" id="m-d1">
+            <div class="team hi"><span class="seed">1</span>Aaron Sanchez</div>
+            <div class="team"><span class="seed">8</span>Kenny Gilbert</div>
+          </div>
+          <div class="match" id="m-d2">
+            <div class="team"><span class="seed">4</span>Kaleena Bliss</div>
+            <div class="team"><span class="seed">5</span>Adam Sobel</div>
+          </div>
+          <div class="match" id="m-d3">
+            <div class="team"><span class="seed">3</span>Marcel Vigneron</div>
+            <div class="team"><span class="seed">6</span>David Viana</div>
+          </div>
+          <div class="match" id="m-d4">
+            <div class="team hi"><span class="seed">2</span>Lee Anne Wong</div>
+            <div class="team"><span class="seed">7</span>Stephanie Izard</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const bracket = document.getElementById('bracket');
+  const svg     = document.getElementById('lines');
+  const COLOR   = '#c0bfb8';
+  const WIDTH   = '1.5';
+  const SLOT_H  = 46; // slot height in px — 2 rows × 23px
+
+  // Get an element's bounding box relative to #bracket
+  // (forces a synchronous reflow, so reads reflect any prior style.top changes)
+  function b(id) {
+    const el   = document.getElementById(id);
+    const rect = el.getBoundingClientRect();
+    const base = bracket.getBoundingClientRect();
+    return {
+      left:   rect.left   - base.left,
+      right:  rect.right  - base.left,
+      top:    rect.top    - base.top,
+      bottom: rect.bottom - base.top,
+      cy:     rect.top    - base.top + rect.height / 2,
+    };
+  }
+
+  // Place a slot so its vertical center lands exactly on targetY (bracket-relative)
+  function placeSlot(slotId, targetY) {
+    const slot  = document.getElementById(slotId);
+    const sg    = slot.closest('.slots-group');
+    const sgTop = sg.getBoundingClientRect().top - bracket.getBoundingClientRect().top;
+    slot.style.top = (targetY - sgTop - SLOT_H / 2) + 'px';
+  }
+
+  // Midpoint between two elements' centers
+  function mid(id1, id2) {
+    return (b(id1).cy + b(id2).cy) / 2;
+  }
+
+  // ── STEP 1: position QF slots ──
+  placeSlot('qf-a1', mid('m-a1', 'm-a2'));
+  placeSlot('qf-a2', mid('m-a3', 'm-a4'));
+  placeSlot('qf-b1', mid('m-b1', 'm-b2'));
+  placeSlot('qf-b2', mid('m-b3', 'm-b4'));
+  placeSlot('qf-c1', mid('m-c1', 'm-c2'));
+  placeSlot('qf-c2', mid('m-c3', 'm-c4'));
+  placeSlot('qf-d1', mid('m-d1', 'm-d2'));
+  placeSlot('qf-d2', mid('m-d3', 'm-d4'));
+
+  // ── STEP 2: position SF slots ──
+  placeSlot('sf-a', mid('qf-a1', 'qf-a2'));
+  placeSlot('sf-b', mid('qf-b1', 'qf-b2'));
+  placeSlot('sf-c', mid('qf-c1', 'qf-c2'));
+  placeSlot('sf-d', mid('qf-d1', 'qf-d2'));
+
+  // ── STEP 3: position Finals ──
+  placeSlot('lf', mid('sf-a', 'sf-b'));
+  placeSlot('rf', mid('sf-c', 'sf-d'));
+
+  // ── STEP 3b: center champ-box slot between lf and rf ──
+  const finalCenter  = document.getElementById('final-center');
+  const finalContent = document.getElementById('final-content');
+  const champBox     = document.getElementById('champ-box');
+  const midFinals    = (b('lf').cy + b('rf').cy) / 2;
+  const fcTop        = finalCenter.getBoundingClientRect().top - bracket.getBoundingClientRect().top;
+  const cbOffsetInFc = champBox.getBoundingClientRect().top - finalContent.getBoundingClientRect().top + champBox.offsetHeight / 2;
+  finalContent.style.top = (midFinals - fcTop - cbOffsetInFc) + 'px';
+
+  // ── STEP 4: draw connector lines ──
+  function seg(x1, y1, x2, y2) {
+    const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l.setAttribute('x1', x1.toFixed(1)); l.setAttribute('y1', y1.toFixed(1));
+    l.setAttribute('x2', x2.toFixed(1)); l.setAttribute('y2', y2.toFixed(1));
+    l.setAttribute('stroke', COLOR); l.setAttribute('stroke-width', WIDTH);
+    l.setAttribute('stroke-linecap', 'round');
+    svg.appendChild(l);
+  }
+  function lConn(id1, id2, tgtId) {
+    const s1 = b(id1), s2 = b(id2), t = b(tgtId);
+    const midY = (s1.cy + s2.cy) / 2, connX = (s1.right + t.left) / 2;
+    seg(s1.right, s1.cy, connX, s1.cy); seg(connX, s1.cy, connX, s2.cy);
+    seg(s2.right, s2.cy, connX, s2.cy); seg(connX, midY, t.left, midY);
+  }
+  function rConn(id1, id2, tgtId) {
+    const s1 = b(id1), s2 = b(id2), t = b(tgtId);
+    const midY = (s1.cy + s2.cy) / 2, connX = (s1.left + t.right) / 2;
+    seg(s1.left, s1.cy, connX, s1.cy); seg(connX, s1.cy, connX, s2.cy);
+    seg(s2.left, s2.cy, connX, s2.cy); seg(connX, midY, t.right, midY);
+  }
+  lConn('m-a1','m-a2','qf-a1'); lConn('m-a3','m-a4','qf-a2');
+  lConn('m-b1','m-b2','qf-b1'); lConn('m-b3','m-b4','qf-b2');
+  lConn('qf-a1','qf-a2','sf-a'); lConn('qf-b1','qf-b2','sf-b');
+  lConn('sf-a','sf-b','lf');
+  const lf = b('lf'), cb = b('champ-box');
+  seg(lf.right, lf.cy, cb.left, lf.cy);
+  if (Math.abs(lf.cy - cb.cy) > 2) seg(cb.left, lf.cy, cb.left, cb.cy);
+  rConn('m-c1','m-c2','qf-c1'); rConn('m-c3','m-c4','qf-c2');
+  rConn('m-d1','m-d2','qf-d1'); rConn('m-d3','m-d4','qf-d2');
+  rConn('qf-c1','qf-c2','sf-c'); rConn('qf-d1','qf-d2','sf-d');
+  rConn('sf-c','sf-d','rf');
+  const rf = b('rf');
+  seg(rf.left, rf.cy, cb.right, rf.cy);
+  if (Math.abs(rf.cy - cb.cy) > 2) seg(cb.right, rf.cy, cb.right, cb.cy);
+
+  // ════════════════════════════════════
+  // ── INTERACTIVE BRACKET LOGIC ──
+  // ════════════════════════════════════
+
+  // Map: match ID → which slot it feeds and at which position (top/bot)
+  const MATCHES = {
+    'm-a1': { slot: 'qf-a1', pos: 'top' }, 'm-a2': { slot: 'qf-a1', pos: 'bot' },
+    'm-a3': { slot: 'qf-a2', pos: 'top' }, 'm-a4': { slot: 'qf-a2', pos: 'bot' },
+    'm-b1': { slot: 'qf-b1', pos: 'top' }, 'm-b2': { slot: 'qf-b1', pos: 'bot' },
+    'm-b3': { slot: 'qf-b2', pos: 'top' }, 'm-b4': { slot: 'qf-b2', pos: 'bot' },
+    'm-c1': { slot: 'qf-c1', pos: 'top' }, 'm-c2': { slot: 'qf-c1', pos: 'bot' },
+    'm-c3': { slot: 'qf-c2', pos: 'top' }, 'm-c4': { slot: 'qf-c2', pos: 'bot' },
+    'm-d1': { slot: 'qf-d1', pos: 'top' }, 'm-d2': { slot: 'qf-d1', pos: 'bot' },
+    'm-d3': { slot: 'qf-d2', pos: 'top' }, 'm-d4': { slot: 'qf-d2', pos: 'bot' },
+  };
+
+  // Map: slot ID → which slot it feeds next, and at which position
+  const SLOTS = {
+    'qf-a1': { next: 'sf-a',      pos: 'top' }, 'qf-a2': { next: 'sf-a',      pos: 'bot' },
+    'qf-b1': { next: 'sf-b',      pos: 'top' }, 'qf-b2': { next: 'sf-b',      pos: 'bot' },
+    'sf-a':  { next: 'lf',        pos: 'top' }, 'sf-b':  { next: 'lf',        pos: 'bot' },
+    'lf':    { next: 'champ-box', pos: 'top' },
+    'qf-c1': { next: 'sf-c',      pos: 'top' }, 'qf-c2': { next: 'sf-c',      pos: 'bot' },
+    'qf-d1': { next: 'sf-d',      pos: 'top' }, 'qf-d2': { next: 'sf-d',      pos: 'bot' },
+    'sf-c':  { next: 'rf',        pos: 'top' }, 'sf-d':  { next: 'rf',        pos: 'bot' },
+    'rf':    { next: 'champ-box', pos: 'bot' },
+  };
+
+  // State for each slot: who are the two competitors and who won
+  const slotState = {};
+  ['qf-a1','qf-a2','qf-b1','qf-b2','sf-a','sf-b','lf',
+   'qf-c1','qf-c2','qf-d1','qf-d2','sf-c','sf-d','rf','champ-box']
+    .forEach(id => { slotState[id] = { top: null, bot: null, winner: null }; });
+
+  // Extract player name (strip seed number) from a .team element
+  function getTeamName(el) {
+    const seed = el.querySelector('.seed');
+    const seedNum = seed ? seed.textContent.trim() : '';
+    const playerName = el.textContent.replace(seed ? seed.textContent : '', '').trim();
+    return seedNum ? seedNum + ' ' + playerName : playerName;
+  }
+
+  // Re-render a slot element based on its state
+  function renderSlot(slotId) {
+    const el    = document.getElementById(slotId);
+    const state = slotState[slotId];
+    const isChamp = slotId === 'champ-box';
+
+    el.innerHTML = '';
+    el.className = isChamp ? 'champ-box' : 'slot';
+
+    ['top', 'bot'].forEach(pos => {
+      const name     = state[pos];
+      const otherPos = pos === 'top' ? 'bot' : 'top';
+      const other    = state[otherPos];
+      const row      = document.createElement('div');
+      row.className  = 'slot-row';
+
+      if (name) {
+        row.textContent = name;
+        if (state.winner === name) {
+          row.classList.add('winner');
+        } else if (state.winner) {
+          // This name lost — clicking it re-picks them as winner
+          row.classList.add('loser');
+          row.addEventListener('click', (e) => { e.stopPropagation(); selectWinner(slotId, name); });
+        } else if (other) {
+          // Both competitors present, no winner yet — pickable
+          row.classList.add('pickable');
+          row.addEventListener('click', (e) => { e.stopPropagation(); selectWinner(slotId, name); });
+        } else {
+          // Only one competitor so far
+          row.classList.add('has-name');
+        }
+      }
+
+      el.appendChild(row);
+    });
+
+    // Slot border state
+    if (!isChamp) {
+      if (state.winner)                    el.classList.add('done');
+      else if (state.top && state.bot)     el.classList.add('ready');
+    } else {
+      if (state.winner)                    el.classList.add('done');
+      const champLbl = document.getElementById('champ-label');
+      const champNameEl = document.getElementById('champ-name');
+      if (champLbl) champLbl.className = 'champ-label' + (state.winner ? ' crowned' : '');
+      if (champNameEl) {
+        if (state.winner) {
+          champNameEl.textContent = state.winner;
+          champNameEl.classList.add('visible');
+        } else {
+          champNameEl.textContent = '';
+          champNameEl.classList.remove('visible');
+        }
+      }
+    }
+  }
+
+  // Clear winner and cascade downstream when a pick changes
+  function cascadeClear(slotId) {
+    const link = SLOTS[slotId];
+    if (!link) return;
+    const { next, pos } = link;
+    if (!slotState[next]) return;
+    slotState[next][pos] = null;
+    if (slotState[next].winner) {
+      slotState[next].winner = null;
+      cascadeClear(next);
+    }
+    renderSlot(next);
+  }
+
+  // Called when a winner is chosen for a slot (via picker)
+  function selectWinner(slotId, name) {
+    const state = slotState[slotId];
+    const prevWinner = state.winner;
+    state.winner = name;
+    renderSlot(slotId);
+
+    const link = SLOTS[slotId];
+    if (!link) return;
+    const { next, pos } = link;
+    if (prevWinner && prevWinner !== name) {
+      // Winner changed — clear everything downstream
+      if (slotState[next].winner) {
+        slotState[next].winner = null;
+        cascadeClear(next);
+      }
+    }
+    slotState[next][pos] = name;
+    renderSlot(next);
+  }
+
+  // Called when a Round 1 team is clicked
+  function selectTeam(matchEl, teamEl) {
+    const matchId = matchEl.id;
+    const teams = [...matchEl.querySelectorAll('.team')];
+    const idx = teams.indexOf(teamEl);
+
+    // Visual: highlight winner, dim loser
+    teams.forEach((t, i) => {
+      t.classList.remove('winner-pick', 'loser-pick');
+      t.classList.add(i === idx ? 'winner-pick' : 'loser-pick');
+    });
+
+    const { slot, pos } = MATCHES[matchId];
+    const name = getTeamName(teamEl);
+    const prevName = slotState[slot][pos];
+
+    // If pick changed, clear downstream
+    if (prevName && prevName !== name && slotState[slot].winner) {
+      slotState[slot].winner = null;
+      cascadeClear(slot);
+    }
+
+    slotState[slot][pos] = name;
+    renderSlot(slot);
+  }
+
+  // ── Initial render (empty 2-row slots) ──
+  Object.keys(slotState).forEach(renderSlot);
+
+  // ── Wire up R1 team clicks ──
+  document.querySelectorAll('.match .team').forEach(teamEl => {
+    teamEl.classList.add('selectable');
+    teamEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectTeam(teamEl.closest('.match'), teamEl);
+    });
+  });
+
+  // ── Print button ──
+  document.getElementById('print-btn').addEventListener('click', () => window.print());
+});
+</script>
+
+</body>
+</html>
